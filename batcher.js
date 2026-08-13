@@ -8,7 +8,11 @@ export async function main(ns) {
   // Copy worker scripts to all purchased cloud servers
   const servers = ns.getPurchasedServers();
   for (const server of servers) {
-    await ns.scp(["h.js", "w1.js", "g.js", "w2.js"], server, "home");
+    await ns.scp(
+      ["hack.js", "weaken.js", "grow.js", "weaken.js"],
+      server,
+      "home",
+    );
   }
 
   while (true) {
@@ -52,15 +56,26 @@ export async function main(ns) {
         (hackThreads + weaken1Threads + growThreads + weaken2Threads) * 1.75;
 
       if (freeRam >= reqRam) {
-        ns.exec("h.js", host, hackThreads, target, delayHack);
-        ns.exec("w1.js", host, weaken1Threads, target, delayWeaken1);
-        ns.exec("g.js", host, growThreads, target, delayGrow);
-        ns.exec("w2.js", host, weaken2Threads, target, delayWeaken2);
+        ns.exec("hack.js", host, hackThreads, target, delayHack);
+        ns.exec("weaken.js", host, weaken1Threads, target, delayWeaken1);
+        ns.exec("grow.js", host, growThreads, target, delayGrow);
+        ns.exec("weaken.js", host, weaken2Threads, target, delayWeaken2);
 
         ns.print(`[BATCH LAUNCHED] ${target} via ${host}`);
         batchDeployed = true;
         break;
       }
+    }
+
+    const magenta = "\u001b[35m";
+    const reset = "\u001b[0m";
+
+    if (!batchDeployed) {
+      ns.print(
+        `${magenta}[WARN] Insufficient RAM to deploy full batch on any host. Waiting for memory to clear...${reset}`,
+      );
+      await ns.sleep(1000); // Sleep longer to let running batches finish and free RAM
+      continue;
     }
 
     // Delay next batch launch by spacing window

@@ -1,3 +1,6 @@
+// Runs on a 3- to 5-minute loop.
+// Scans all rooted nodes, calculates theoretical max yield per second, and updates target.txt.
+
 /** @param {NS} ns */
 export async function main(ns) {
   ns.disableLog("ALL");
@@ -48,9 +51,12 @@ export async function main(ns) {
     }
   }
 
+  const magenta = "\u001b[35m";
+  const reset = "\u001b[0m";
+
   // Save optimal target to target.txt
   await ns.write("target.txt", bestTarget, "w");
   ns.tprint(
-    `[Target Finder] Optimal target set to: ${bestTarget} (Score: ${Math.round(maxScore)})`,
+    `Optimal target set to: ${magenta}${bestTarget} (Score: $${Math.round(maxScore)})`,
   );
 }

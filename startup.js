@@ -1,38 +1,27 @@
 /** @param {NS} ns */
 export async function main(ns) {
   ns.disableLog("ALL");
-  ns.tprint("Starting Master Controller...");
+  ns.tprint("[STARTUP] Initializing Bitburner Automation Infrastructure...");
 
-  // Initial target evaluation
-  if (ns.fileExists("target-finder.js", "home")) {
-    ns.run("target-finder.js");
-    await ns.sleep(1000);
-  }
+  const processes = [
+    { name: "network-auto.js", args: [] }, // Auto-Port Cracker & Nuke
+    { name: "buy-programs.js", args: [] }, // Darkweb Executable Buyer
+    { name: "target-finder.js", args: [] }, // Target Selector -> target.txt
+    { name: "cloud-servers.js", args: [] }, // Smart Server Purchaser
+    { name: "workers.js", args: [] }, // Distributed Worker Deployment
+  ];
 
-  // Initial Auto-Nuke scan
-  if (ns.fileExists("network-auto.js", "home")) {
-    ns.run("network-auto.js");
-    await ns.sleep(1000);
-  }
-
-  // Main execution loop
-  let loopCount = 0;
-  while (true) {
-    // Re-evaluate optimal target every 6 minutes (every 2 loops)
-    if (loopCount % 2 === 0 && ns.fileExists("target-finder.js", "home")) {
-      ns.run("target-finder.js");
-      await ns.sleep(1000);
+  for (const proc of processes) {
+    if (ns.fileExists(proc.name, "home")) {
+      if (!ns.isRunning(proc.name, "home")) {
+        ns.run(proc.name, 1, ...proc.args);
+        ns.tprint(`[STARTUP] Launched ${proc.name}`);
+      } else {
+        ns.tprint(`[STARTUP] ${proc.name} is already running.`);
+      }
     }
-
-    // Deploy or update workers
-    if (
-      !ns.isRunning("workers.js", "home") &&
-      ns.fileExists("workers.js", "home")
-    ) {
-      ns.run("workers.js");
-    }
-
-    loopCount++;
-    await ns.sleep(180000); // 3-minute pulse
+    await ns.sleep(200);
   }
+
+  ns.tprint("[STARTUP] All systems operational.");
 }
