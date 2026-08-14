@@ -1,11 +1,7 @@
-//Runs on a 10-second loop.
-//Crawls all servers, opens available ports using owned .exe files, and calls ns.nuke().
-
 /** @param {NS} ns */
 export async function main(ns) {
   ns.disableLog("ALL");
 
-  // Recursively map all servers across the network
   function getAllServers(node = "home", visited = new Set()) {
     visited.add(node);
     for (const neighbor of ns.scan(node)) {
@@ -18,10 +14,9 @@ export async function main(ns) {
 
   while (true) {
     const servers = getAllServers();
-    let newRoots = 0;
+    let newRoots = 0; // Track new roots in this pass
 
     for (const server of servers) {
-      // Skip home, player-purchased cloud servers, and already rooted servers
       if (
         server === "home" ||
         server.startsWith("cloud-") ||
@@ -29,7 +24,6 @@ export async function main(ns) {
       )
         continue;
 
-      // Count owned port openers and open ports on target
       let openPorts = 0;
 
       if (ns.fileExists("BruteSSH.exe", "home")) {
@@ -53,7 +47,6 @@ export async function main(ns) {
         openPorts++;
       }
 
-      // Check required ports vs open ports
       const reqPorts = ns.getServerNumPortsRequired(server);
 
       if (openPorts >= reqPorts) {
@@ -65,14 +58,13 @@ export async function main(ns) {
       }
     }
 
-    // TRIGGER: If any new servers were nuked, run backdoor-auto.js
-    if (newRoots > 0) {
+    // TRIGGER: If any new servers were nuked, fire backdoor-auto.js!
+    if (newRoots > 0 && ns.fileExists("backdoor-auto.js", "home")) {
       if (!ns.isRunning("backdoor-auto.js", "home")) {
         ns.run("backdoor-auto.js");
       }
     }
 
-    // Pulse every 10 seconds
-    await ns.sleep(10000);
+    await ns.sleep(10000); // 10-second pulse
   }
 }

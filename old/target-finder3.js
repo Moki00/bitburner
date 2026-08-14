@@ -14,17 +14,12 @@ export async function main(ns) {
 
   const myHack = ns.getHackingLevel();
   const servers = getAllServers();
+
   let bestTarget = "n00dles";
   let maxScore = 0;
 
   for (const server of servers) {
-    // NUKE if no root access yet
-    if (!ns.hasRootAccess(server)) {
-      try {
-        ns.nuke(server);
-      } catch (e) {}
-    }
-    if (!ns.hasRootAccess(server)) continue; // skip unrooted servers
+    if (!ns.hasRootAccess(server)) continue;
 
     const reqHack = ns.getServerRequiredHackingLevel(server);
     const maxMoney = ns.getServerMaxMoney(server);
@@ -37,12 +32,10 @@ export async function main(ns) {
 
     const minSec = ns.getServerMinSecurityLevel(server);
     const growth = ns.getServerGrowth(server);
-    const hackTime = ns.getHackTime(server);
-    const hackChance = ns.hackAnalyzeChance(server);
 
-    // SMARTER SCORE FORMULA:
-    // Takes Max Money, Growth Rate, and Chance to Hack, weighed against Min Security & Time
-    const score = (maxMoney * growth * hackChance) / (minSec * hackTime);
+    // Evaluate based on MINIMUM security (ideal primed state)
+    // Formula: (Max Money * Growth Rate) / Min Security
+    const score = (maxMoney * growth) / minSec;
 
     if (score > maxScore) {
       maxScore = score;
@@ -50,12 +43,14 @@ export async function main(ns) {
     }
   }
 
-  const magenta = "\u001b[35m";
-  const reset = "\u001b[0m";
-
-  // Save optimal target to target.txt
+  // Write winning target to target.txt
   await ns.write("target.txt", bestTarget, "w");
+
+  ns.tprint(`==========================================`);
+  ns.tprint(`[TARGET-FINDER] Target Updated: ${bestTarget}`);
   ns.tprint(
-    `Target set to: ${magenta}${bestTarget} ${reset}(Score: $${Math.round(maxScore)})`,
+    `[TARGET-FINDER] Max Money: $${ns.formatNumber(ns.getServerMaxMoney(bestTarget))}`,
   );
+  ns.tprint(`[TARGET-FINDER] Growth Rate: ${ns.getServerGrowth(bestTarget)}`);
+  ns.tprint(`==========================================`);
 }

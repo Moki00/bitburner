@@ -5,9 +5,9 @@ export async function main(ns) {
 
   const processes = [
     { name: "network-auto.js", args: [] }, // Auto-Port Cracker & Nuke
-    { name: "buy-programs.js", args: [] }, // Darkweb Executable Buyer
-    { name: "target-finder.js", args: [] }, // Target Selector -> target.txt
-    { name: "cloud-servers.js", args: [] }, // Smart Server Purchaser
+    { name: "backdoor-auto.js", args: [] }, // must copy script manually in terminal
+    { name: "target-finder.js", args: [] },
+    { name: "cloud-servers.js", args: [] }, // Purchaser
     { name: "workers.js", args: [] }, // Distributed Worker Deployment
   ];
 
@@ -23,5 +23,5 @@ export async function main(ns) {
     await ns.sleep(200);
   }
 
-  ns.tprint("[STARTUP] All systems operational.");
+  ns.tprint("[STARTUP] Buy Tor 1st!");
 }

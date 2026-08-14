@@ -65,13 +65,6 @@ export async function main(ns) {
       }
     }
 
-    // TRIGGER: If any new servers were nuked, run backdoor-auto.js
-    if (newRoots > 0) {
-      if (!ns.isRunning("backdoor-auto.js", "home")) {
-        ns.run("backdoor-auto.js");
-      }
-    }
-
     // Pulse every 10 seconds
     await ns.sleep(10000);
   }

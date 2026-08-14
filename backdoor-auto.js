@@ -1,7 +1,26 @@
 /** @param {NS} ns */
 export async function main(ns) {
   const myHack = ns.getHackingLevel();
-  ns.tprint(`=== Pending Backdoors (Hacking: ${myHack}) ===`);
+
+  // 1. Define the ONLY static servers worth backdooring
+  const CRITICAL_SERVERS = new Set([
+    "n00dles", // first target
+    "phantasy", // target favorite
+    // "CSEC", // CyberSec Done.
+    // "avmnite-02h", // NiteSec Done.
+    "I.I.I.I", // The Black Hand
+    "run4theh111z", // BitRunners
+    "fulcrumassets", // Fulcrum Secret Tech
+    "w0r1d_d3m0n", // Victory
+  ]);
+
+  // 2. Add your active farm target from target.txt (if it exists)
+  if (ns.fileExists("target.txt")) {
+    const activeTarget = ns.read("target.txt").trim();
+    if (activeTarget) CRITICAL_SERVERS.add(activeTarget);
+  }
+
+  ns.tprint(`=== Backdoor Targets (Hack: ${myHack}) ===`);
 
   function getPath(target, parentMap) {
     let path = [target];
@@ -27,39 +46,31 @@ export async function main(ns) {
         parentMap.set(neighbor, current);
         queue.push(neighbor);
 
-        // Ignore home, darkweb, and player-owned servers
-        if (
-          neighbor === "home" ||
-          neighbor === "darkweb" ||
-          neighbor.startsWith("cloud-") ||
-          neighbor.startsWith("a") ||
-          neighbor.startsWith("q") ||
-          neighbor.startsWith("w")
-        )
-          continue;
+        // SOFT FILTER: Only evaluate backdoor status if it's a critical server
+        if (CRITICAL_SERVERS.has(neighbor)) {
+          const reqHack = ns.getServerRequiredHackingLevel(neighbor);
+          const server = ns.getServer(neighbor);
 
-        const server = ns.getServer(neighbor);
-        const reqHack = server.requiredHackingSkill;
+          // Filter: Must be rooted, hackable, and not backdoored yet
+          if (
+            ns.hasRootAccess(neighbor) &&
+            myHack >= reqHack &&
+            !server.backdoorInstalled
+          ) {
+            const path = getPath(neighbor, parentMap);
+            const connectCmd =
+              path.map((node) => `connect ${node}`).join("; ") + "; backdoor;";
 
-        // Strictly check: Must be rooted, skill met, and NOT backdoored
-        if (
-          server.hasAdminRights &&
-          myHack >= reqHack &&
-          !server.backdoorInstalled
-        ) {
-          const path = getPath(neighbor, parentMap);
-          const connectCmd =
-            path.map((node) => `connect ${node}`).join("; ") + "; backdoor;";
-
-          ns.tprint(`[NEEDS BACKDOOR] ${neighbor} (Req: ${reqHack})`);
-          ns.tprint(`   ${connectCmd}\n`);
-          found++;
+            ns.tprint(`[IMPORTANT BACKDOOR] ${neighbor} (Req: ${reqHack})`);
+            ns.tprint(`    ${connectCmd}\n`);
+            found++;
+          }
         }
       }
     }
   }
 
   if (found === 0) {
-    ns.tprint("All accessible servers are already backdoored!");
+    ns.tprint("No important backdoors available");
   }
 }

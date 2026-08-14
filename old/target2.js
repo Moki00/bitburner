@@ -29,11 +29,8 @@ export async function main(ns) {
     const reqHack = ns.getServerRequiredHackingLevel(server);
     const maxMoney = ns.getServerMaxMoney(server);
 
-    // Filter 1: Must have money and be hackable
+    // Skip targets with no money or required hacking > half your level (to keep cycle times reasonable)
     if (maxMoney <= 0 || reqHack > myHack) continue;
-
-    // Filter 2: Ignore low-tier beginner servers if Hacking skill > 100
-    if (myHack > 100 && maxMoney < 10000000) continue;
 
     const minSec = ns.getServerMinSecurityLevel(server);
     const growth = ns.getServerGrowth(server);
