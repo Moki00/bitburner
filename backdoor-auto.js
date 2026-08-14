@@ -6,9 +6,11 @@ export async function main(ns) {
   const CRITICAL_SERVERS = new Set([
     "n00dles", // first target
     "phantasy", // target favorite
+    "max-hardware", // target favorite
+    "the-hub", // target favorite
     // "CSEC", // CyberSec Done.
     // "avmnite-02h", // NiteSec Done.
-    "I.I.I.I", // The Black Hand
+    // "I.I.I.I", // The Black Hand Done
     "run4theh111z", // BitRunners
     "fulcrumassets", // Fulcrum Secret Tech
     "w0r1d_d3m0n", // Victory

@@ -16,10 +16,41 @@ export async function main(ns) {
     return Array.from(visited);
   }
 
+  // Darkweb items list & prices
+  const darkwebItems = [
+    { name: "DeepscanV1.exe", cost: 500_000 },
+    { name: "AutoLink.exe", cost: 1_000_000 },
+    { name: "FTPCrack.exe", cost: 1_500_000 },
+    { name: "relaySMTP.exe", cost: 5_000_000 },
+    { name: "DeepscanV2.exe", cost: 25_000_000 },
+    { name: "HTTPWorm.exe", cost: 30_000_000 },
+    { name: "DarkscapeNavigator.exe", cost: 50_000_000 },
+    { name: "SQLInject.exe", cost: 250_000_000 },
+    { name: "Formulas.exe", cost: 5_000_000_000 },
+  ];
+
+  const alertedItems = new Set();
+
   while (true) {
     const servers = getAllServers();
+    const money = ns.getServerMoneyAvailable("home");
     let newRoots = 0;
 
+    // 1. Check if can buy programs
+    for (const item of darkwebItems) {
+      if (
+        !ns.fileExists(item.name, "home") &&
+        !alertedItems.has(item.name) &&
+        money >= item.cost
+      ) {
+        ns.tprint(
+          `[AFFORDABLE] You can now buy ${item.name} ($${ns.format.number(item.cost)})! Type: buy ${item.name}`,
+        );
+        alertedItems.add(item.name);
+      }
+    }
+
+    // 2. Nuke servers
     for (const server of servers) {
       // Skip home, player-purchased cloud servers, and already rooted servers
       if (
