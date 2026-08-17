@@ -35,12 +35,12 @@ export async function main(ns) {
 
     // 2. Buy missing servers up to 25
     if (servers.length < limit) {
-      const cost = ns.getPurchasedServerCost(targetRam);
+      const cost = ns.cloud.getServerCost(targetRam);
       const spendable =
         ns.getServerMoneyAvailable("home") * (1 - RESERVE_RATIO);
 
       if (spendable >= cost) {
-        const hostname = ns.purchaseServer(
+        const hostname = ns.cloud.purchaseServer(
           `cloud-${servers.length + 1}`,
           targetRam,
         );
@@ -55,12 +55,12 @@ export async function main(ns) {
         const curRam = ns.getServerMaxRam(host);
 
         if (curRam < targetRam) {
-          const upgradeCost = ns.getPurchasedServerUpgradeCost(host, targetRam);
+          const upgradeCost = ns.cloud.getServerUpgradeCost(host, targetRam);
           const spendable =
             ns.getServerMoneyAvailable("home") * (1 - RESERVE_RATIO);
 
           if (spendable >= upgradeCost) {
-            if (ns.upgradePurchasedServer(host, targetRam)) {
+            if (ns.cloud.upgradeServer(host, targetRam)) {
               ns.print(
                 `[CLOUD] Upgraded ${host}: ${curRam} GB -> ${targetRam} GB`,
               );
