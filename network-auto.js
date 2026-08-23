@@ -18,6 +18,7 @@ export async function main(ns) {
 
   // Darkweb items list & prices
   const darkwebItems = [
+    { name: "BruteSSH.exe", cost: 500_000 },
     { name: "DeepscanV1.exe", cost: 500_000 },
     { name: "AutoLink.exe", cost: 1_000_000 },
     { name: "FTPCrack.exe", cost: 1_500_000 },
