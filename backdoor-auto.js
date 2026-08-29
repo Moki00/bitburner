@@ -4,16 +4,13 @@ export async function main(ns) {
 
   // 1. Define the ONLY static servers worth backdooring
   const CRITICAL_SERVERS = new Set([
-    "n00dles", // first target
-    "phantasy", // target favorite
-    "max-hardware", // target favorite
-    "the-hub", // target favorite
-    // "CSEC", // CyberSec Done.
-    // "avmnite-02h", // NiteSec Done.
-    // "I.I.I.I", // The Black Hand Done
+    "CSEC", // CyberSec
+    "avmnite-02h", // NiteSec
+    "I.I.I.I", // The Black Hand
     "run4theh111z", // BitRunners
-    "fulcrumassets", // Fulcrum Secret Tech
-    "w0r1d_d3m0n", // Victory
+    "fulcrumassets", // Fulcrum Secret Technologies
+    "The-Cave", // Daedalus
+    "w0r1d_d3m0n", // Victory / Red Pill
   ]);
 
   // 2. Add your active farm target from target.txt (if it exists)
@@ -48,7 +45,7 @@ export async function main(ns) {
         parentMap.set(neighbor, current);
         queue.push(neighbor);
 
-        // SOFT FILTER: Only evaluate backdoor status if it's a critical server
+        // Evaluate backdoor status if in critical list
         if (CRITICAL_SERVERS.has(neighbor)) {
           const reqHack = ns.getServerRequiredHackingLevel(neighbor);
           const server = ns.getServer(neighbor);
