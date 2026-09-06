@@ -1,40 +1,45 @@
 /** @param {NS} ns */
 export async function main(ns) {
-  const MIN_RAM = 2; // 2GB start
+  ns.disableLog("ALL");
+  const MIN_RAM = 8;
   const limit = ns.cloud.getServerLimit();
 
-  // Defines the next EXE threshold, its cost, and the RAM ceiling it unlocks
   const progGates = [
-    { file: "BruteSSH.exe", cost: 500_000, cap: 2 },
-    { file: "FTPCrack.exe", cost: 1_500_000, cap: 8 },
-    { file: "relaySMTP.exe", cost: 5_000_000, cap: 32 },
-    { file: "HTTPWorm.exe", cost: 30_000_000, cap: 128 },
-    { file: "SQLInject.exe", cost: 250_000_000, cap: 512 },
+    { file: "BruteSSH.exe", cost: 500_000, cap: 8 },
+    { file: "FTPCrack.exe", cost: 1_500_000, cap: 32 },
+    { file: "relaySMTP.exe", cost: 5_000_000, cap: 128 },
+    { file: "HTTPWorm.exe", cost: 30_000_000, cap: 512 },
+    { file: "SQLInject.exe", cost: 250_000_000, cap: 2048 },
   ];
 
   function getProgressionState() {
     for (const gate of progGates) {
       if (!ns.fileExists(gate.file, "home")) {
-        // Next EXE is not owned yet: lock RAM to previous tier and protect EXE cost
         return {
           maxRam: gate.cap,
           walletBuffer: gate.cost,
           nextExe: gate.file,
+          isBlocked: true, // Freeze purchases completely until this exe exists
         };
       }
     }
-    // All 5 port openers owned
+
+    // All programs owned: automatically open ceiling to 65,536 GB (64 TB)
     return {
-      maxRam: 1024,
-      walletBuffer: 0,
+      maxRam: 1024 * 64,
+      walletBuffer: 0, // 100_000_000_000, // $100b for end with 30 augments and 2500 hack
       nextExe: "ALL_OWNED",
+      isBlocked: false,
     };
   }
 
-  function getSpendable(walletBuffer) {
+  function getSpendable(state) {
+    // If waiting on an unbought EXE, strictly forbid spending
+    if (state.isBlocked) return 0;
+
     const money = ns.getServerMoneyAvailable("home");
-    if (money <= walletBuffer) return 0;
-    return (money - walletBuffer) * 0.5; // Only spend 50% of surplus
+    if (money <= state.walletBuffer) return 0;
+    return (money - state.walletBuffer) * 0.5;
   }
 
   function getMaxAffordableRam(budget, cap) {
@@ -47,8 +52,17 @@ export async function main(ns) {
 
   while (true) {
     const state = getProgressionState();
+
+    if (state.isBlocked) {
+      ns.print(
+        `[CLOUD HOLD] Paused. Awaiting purchase of ${state.nextExe} ($${ns.format.number(state.walletBuffer)}).`,
+      );
+      await ns.sleep(5000);
+      continue;
+    }
+
     const servers = ns.cloud.getServerNames();
-    const spendable = getSpendable(state.walletBuffer);
+    const spendable = getSpendable(state);
 
     // 1. Buy initial servers up to limit (25)
     if (servers.length < limit) {
@@ -59,9 +73,7 @@ export async function main(ns) {
 
         if (hostname) {
           ns.print(
-            `[CLOUD BUY] ${hostname} (${targetRam} GB) for $${ns.format.number(
-              ns.cloud.getServerCost(targetRam),
-            )}`,
+            `[CLOUD BUY] ${hostname} (${targetRam} GB) for $${ns.format.number(ns.cloud.getServerCost(targetRam))}`,
           );
         }
       }
@@ -83,9 +95,7 @@ export async function main(ns) {
 
     // 3. Check if all servers hit the dynamic progression cap
     if (!targetHost || minRam >= state.maxRam) {
-      ns.print(
-        `[CLOUD GATE] Waiting on ${state.nextExe}. Cloud fleet capped at ${state.maxRam} GB.`,
-      );
+      ns.print(`[CLOUD CAP] Fleet capped at ${state.maxRam} GB.`);
       await ns.sleep(15000);
       continue;
     }
@@ -97,9 +107,7 @@ export async function main(ns) {
     if (spendable >= upgradeCost) {
       if (ns.cloud.upgradeServer(targetHost, nextRam)) {
         ns.print(
-          `[CLOUD UPGRADE] ${targetHost}: ${minRam} GB -> ${nextRam} GB for $${ns.format.number(
-            upgradeCost,
-          )}`,
+          `[CLOUD UPGRADE] ${targetHost}: ${minRam} GB -> ${nextRam} GB for $${ns.format.number(upgradeCost)}`,
         );
       }
     }
