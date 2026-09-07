@@ -1,6 +1,5 @@
 /** @param {NS} ns */
 export async function main(ns) {
-  ns.disableLog("ALL");
   const MIN_RAM = 8;
   const limit = ns.cloud.getServerLimit();
 

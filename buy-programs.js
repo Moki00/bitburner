@@ -1,7 +1,5 @@
 /** @param {NS} ns */
 export async function main(ns) {
-  ns.disableLog("ALL");
-
   // Check if Singularity API (Source-File 4) is unlocked
   if (!ns.singularity) {
     ns.print(

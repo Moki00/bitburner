@@ -1,7 +1,5 @@
 /** @param {NS} ns */
 export async function main(ns) {
-  ns.disableLog("ALL");
-
   const workerScripts = ["hack.js", "grow.js", "weaken.js"];
   const scriptRam = 1.75;
 

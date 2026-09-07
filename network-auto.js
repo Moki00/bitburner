@@ -3,8 +3,6 @@
 
 /** @param {NS} ns */
 export async function main(ns) {
-  ns.disableLog("ALL");
-
   // Recursively map all servers across the network
   function getAllServers(node = "home", visited = new Set()) {
     visited.add(node);
