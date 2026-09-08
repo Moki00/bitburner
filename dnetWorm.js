@@ -117,9 +117,9 @@ async function solvePassword(ns, host, details) {
   }
 
   if (probe.message) {
-    // Matches both "password is <val>" and "PIN is <val>"
+    // 1. Explicit phrase match
     const explicitMatch = probe.message.match(
-      /(?:password|PIN)\s+is\s+([^\s\.\,]+)/i,
+      /(?:password is|PIN is|set to)\s+([^\s\.\,]+)/i,
     );
     if (explicitMatch) {
       const leakedVal = explicitMatch[1];
@@ -132,13 +132,14 @@ async function solvePassword(ns, host, details) {
       }
     }
 
+    // 2. Numeric fallback (grabs standalone numbers like 444, 450, 708)
     const numMatch = probe.message.match(/\b\d{3,6}\b/);
     if (numMatch) {
       const leakedPin = numMatch[0];
       const res = await ns.dnet.authenticate(host, leakedPin);
       if (res.success || res.code === 200) {
         ns.tprint(
-          `[DARKNET MEMO] Cracked ${host} with leaked PIN: "${leakedPin}"`,
+          `[DARKNET MEMO] Cracked ${host} with memo PIN: "${leakedPin}"`,
         );
         return true;
       }
