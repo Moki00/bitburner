@@ -17,35 +17,38 @@ export async function main(ns) {
   // Darkweb items list & prices
   const darkwebItems = [
     { name: "BruteSSH.exe", cost: 500_000 },
-    { name: "DeepscanV1.exe", cost: 500_000 },
-    { name: "AutoLink.exe", cost: 1_000_000 },
+    // { name: "DeepscanV1.exe", cost: 500_000 },
+    // { name: "AutoLink.exe", cost: 1_000_000 },
     { name: "FTPCrack.exe", cost: 1_500_000 },
     { name: "relaySMTP.exe", cost: 5_000_000 },
-    { name: "DeepscanV2.exe", cost: 25_000_000 },
+    // { name: "DeepscanV2.exe", cost: 25_000_000 },
     { name: "HTTPWorm.exe", cost: 30_000_000 },
-    { name: "DarkscapeNavigator.exe", cost: 50_000_000 },
+    // { name: "DarkscapeNavigator.exe", cost: 50_000_000 },
     { name: "SQLInject.exe", cost: 250_000_000 },
-    { name: "Formulas.exe", cost: 5_000_000_000 },
+    // { name: "Formulas.exe", cost: 5_000_000_000 },
   ];
 
-  const alertedItems = new Set();
-
-  while (true) {
+  let buildingNetwork = true;
+  while (buildingNetwork) {
     const servers = getAllServers();
     const money = ns.getServerMoneyAvailable("home");
     let newRoots = 0;
 
-    // 1. Check if can buy programs
+    // Buy tor router if not owned
+    if (!ns.hasTorRouter() && money >= 200_000) {
+      if (ns.singularity.purchaseTor()) {
+        ns.tprint("Auto Bought TOR router for $200,000");
+      }
+    }
+
+    // 1. Buy programs with Sigularity
     for (const item of darkwebItems) {
-      if (
-        !ns.fileExists(item.name, "home") &&
-        !alertedItems.has(item.name) &&
-        money >= item.cost
-      ) {
-        ns.tprint(
-          `[AFFORDABLE] You can now buy ${item.name} ($${ns.format.number(item.cost)})! Type: buy ${item.name}`,
-        );
-        alertedItems.add(item.name);
+      if (!ns.fileExists(item.name, "home") && money >= item.cost) {
+        if (ns.singularity.purchaseProgram(item.name)) {
+          ns.tprint(
+            `Auto Bought ${item.name} for $${ns.format.number(item.cost)}`,
+          );
+        }
       }
     }
 
@@ -100,6 +103,12 @@ export async function main(ns) {
       if (!ns.isRunning("backdoor-auto.js", "home")) {
         ns.run("backdoor-auto.js");
       }
+    }
+
+    // TRIGGER: If all servers are rooted, stop building network
+    if (servers.every((server) => ns.hasRootAccess(server))) {
+      buildingNetwork = false;
+      ns.tprint("[AUTO-ROOT] All servers rooted. Stopping network build.");
     }
 
     // Pulse every 10 seconds
