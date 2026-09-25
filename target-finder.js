@@ -12,56 +12,84 @@ export async function main(ns) {
     return Array.from(visited);
   }
 
-  const myHack = ns.getHackingLevel();
-  const servers = getAllServers();
-  let bestTarget = "n00dles";
-  let maxScore = 0;
+  let lastHack = 0;
 
-  for (const server of servers) {
-    if (
-      !ns.hasRootAccess(server) ||
-      server === "home" ||
-      server.startsWith("cloud-")
-    )
-      continue;
+  while (true) {
+    const myHack = ns.getHackingLevel();
 
-    const reqHack = ns.getServerRequiredHackingLevel(server);
-    const maxMoney = ns.getServerMaxMoney(server);
+    // Re-evaluate whenever hacking increases by 20+ levels or on initial startup
+    if (myHack - lastHack >= 20 || lastHack === 0) {
+      lastHack = myHack;
 
-    // Filter 1: Must have a real money pool
-    if (maxMoney <= 0) continue;
+      const servers = getAllServers();
+      let bestTarget = null;
+      let maxScore = 0;
 
-    // Filter 2: Only target servers within your power bracket
-    if (reqHack > myHack * 0.7) continue;
+      let fallbackTarget = "n00dles";
+      let fallbackScore = 0;
 
-    // Filter 3: Hard floor to ignore beginner crumbs once Hack > 100
-    if (myHack > 100 && maxMoney < 20_000_000) continue;
+      for (const server of servers) {
+        if (
+          !ns.hasRootAccess(server) ||
+          server === "home" ||
+          server.startsWith("cloud-")
+        ) {
+          continue;
+        }
 
-    const minSec = ns.getServerMinSecurityLevel(server);
-    const growth = ns.getServerGrowth(server);
+        const reqHack = ns.getServerRequiredHackingLevel(server);
+        const maxMoney = ns.getServerMaxMoney(server);
+        const minSecurity = ns.getServerMinSecurityLevel(server);
+        const growth = ns.getServerGrowth(server);
 
-    // Bitburner true minimum-security hack time scaling:
-    // Base time is heavily dictated by base difficulty (minSec)
-    const estHackTimeMinSec = Math.max(2.0, (minSec * 150) / myHack);
+        if (maxMoney <= 0) continue;
 
-    // Avoid massive 5+ minute servers for standard worker fleets
-    if (estHackTimeMinSec > 180) continue;
+        const estHackTimeMinSec = Math.max(
+          2.0,
+          (minSecurity * 150) / Math.max(1, myHack),
+        );
+        const score = (maxMoney * growth) / (minSecurity * estHackTimeMinSec);
 
-    // Projected theoretical yield rate:
-    // (Max Money * Growth Multiplier) / (Min Security * Prepped Cycle Time)
-    const score = (maxMoney * growth) / (minSec * estHackTimeMinSec);
+        // Fallback: Best rooted server within reach, ignoring strict filters
+        if (reqHack <= myHack && score > fallbackScore) {
+          fallbackScore = score;
+          fallbackTarget = server;
+        }
 
-    if (score > maxScore) {
-      maxScore = score;
-      bestTarget = server;
+        // Strict Production Filters
+        if (reqHack > myHack * 0.7) continue;
+        if (myHack > 100 && maxMoney < 20_000_000) continue;
+        if (estHackTimeMinSec > 180) continue;
+
+        if (score > maxScore) {
+          maxScore = score;
+          bestTarget = server;
+        }
+      }
+
+      const finalTarget = bestTarget ?? fallbackTarget;
+      const finalScore = bestTarget ? maxScore : fallbackScore;
+      const currentSavedTarget = ns.read("target.txt");
+
+      const magenta = "\u001b[35m";
+      const reset = "\u001b[0m";
+
+      if (finalTarget !== currentSavedTarget) {
+        await ns.write("target.txt", finalTarget, "w");
+        ns.tprint(
+          `Target set to: ${magenta}${finalTarget}${reset} (Score: $${ns.format.number(finalScore)})`,
+        );
+      }
+
+      if (myHack > 2500) {
+        ns.tprint(
+          "[TARGET-FINDER] Endgame hacking threshold cleared. Exiting daemon.",
+        );
+        break;
+      }
     }
+
+    // ALWAYS sleep outside the if block so the loop pulses every 30 seconds
+    await ns.sleep(30000);
   }
-
-  const magenta = "\u001b[35m";
-  const reset = "\u001b[0m";
-
-  await ns.write("target.txt", bestTarget, "w");
-  ns.tprint(
-    `Target set to: ${magenta}${bestTarget}${reset} (Score: $${ns.format.number(maxScore)})`,
-  );
 }
