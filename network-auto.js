@@ -98,8 +98,11 @@ export async function main(ns) {
       }
     }
 
-    // TRIGGER: If any new servers were nuked, run backdoor-auto.js
+    // TRIGGER: If new servers were nuked, run target-finder.js and backdoor-auto.js
     if (newRoots > 0) {
+      if (!ns.isRunning("target-finder.js", "home")) {
+        ns.run("target-finder.js");
+      }
       if (!ns.isRunning("backdoor-auto.js", "home")) {
         ns.run("backdoor-auto.js");
       }

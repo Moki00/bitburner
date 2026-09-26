@@ -15,7 +15,7 @@ export async function main(ns) {
     { name: "cloud-servers.js", args: [] }, // Purchase and scale server RAM
     { name: "workers.js", args: [] }, // Multi-phase HGW thread coordinator
     { name: "ipvgo.js", args: [] }, // IPvGO board automation
-    { name: "dnet-worm.js", args: [] }, // Dark Net infiltration and cache looting
+    { name: "dnetWorm.js", args: [] }, // Dark Net infiltration and cache looting
   ];
 
   for (const proc of processes) {
