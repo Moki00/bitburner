@@ -1,47 +1,72 @@
 /** @param {NS} ns */
 export async function main(ns) {
-  const wormFiles = ["dnetWorm.js", "dnet-worm.js"];
-  const visited = new Set();
-  const queue = ["home"];
-  let killed = 0;
-  let deleted = 0;
+  ns.disableLog("ALL");
+  ns.ui.openTail();
 
-  ns.tprint("[PURGE] Sweeping network mesh to wipe all worm scripts...");
-
-  while (queue.length > 0) {
-    const current = queue.shift();
-    visited.add(current);
-
-    let neighbors = [];
-    try {
-      neighbors = [...ns.scan(current), ...(ns.dnet?.probe() || [])];
-    } catch (e) {
-      neighbors = ns.scan(current);
+  // 1. Discover all accessible standard servers
+  function getEntireNetwork(origin = "home", seen = new Set()) {
+    seen.add(origin);
+    for (const host of ns.scan(origin)) {
+      if (!seen.has(host)) {
+        getEntireNetwork(host, seen);
+      }
     }
+    return seen;
+  }
 
-    for (const host of neighbors) {
-      if (!visited.has(host)) {
-        visited.add(host);
-        queue.push(host);
+  const allHosts = getEntireNetwork();
 
-        if (host !== "home") {
-          const processes = ns.ps(host);
-          for (const p of processes) {
-            if (wormFiles.includes(p.filename)) {
-              ns.kill(p.pid);
-              killed++;
-            }
-          }
-          for (const file of wormFiles) {
-            if (ns.fileExists(file, host)) {
-              ns.rm(file, host);
-              deleted++;
-            }
-          }
+  // 2. Discover Darknet nodes via probe and stasis links
+  try {
+    if (ns.dnet?.probe) {
+      const discovered = ns.dnet.probe();
+      if (Array.isArray(discovered)) {
+        for (const host of discovered) allHosts.add(host);
+      }
+    }
+  } catch (err) {
+    ns.print(`probe notice: ${err.message ?? err}`);
+  }
+
+  try {
+    if (ns.dnet?.getStasisLinkedServers) {
+      const linked = ns.dnet.getStasisLinkedServers();
+      if (Array.isArray(linked)) {
+        for (const host of linked) allHosts.add(host);
+      }
+    }
+  } catch (err) {}
+
+  ns.print(
+    `[WORM PURGE] Scanning ${allHosts.size} unique network and Darknet nodes...`,
+  );
+
+  let foundInstances = 0;
+  let removedFiles = 0;
+
+  for (const host of allHosts) {
+    try {
+      const processes = ns.ps(host);
+      for (const proc of processes) {
+        if (proc.filename.toLowerCase().includes("dnetworm")) {
+          ns.kill(proc.pid);
+          ns.print(
+            `[TERMINATED] Killed ${proc.filename} (PID: ${proc.pid}) on ${host}`,
+          );
+          foundInstances++;
         }
       }
+
+      if (host !== "home" && ns.fileExists("dnetWorm.js", host)) {
+        ns.rm("dnetWorm.js", host);
+        removedFiles++;
+      }
+    } catch (err) {
+      // Skips nodes requiring deeper PID session auth
     }
   }
 
-  ns.tprint(`[PURGE COMPLETE] Killed: ${killed} | Deleted: ${deleted}`);
+  ns.print(
+    `[WORM PURGE] Complete. Terminated ${foundInstances} scripts, removed ${removedFiles} files.`,
+  );
 }
