@@ -10,12 +10,14 @@ export async function main(ns) {
 
   const processes = [
     { name: "network-auto.js", args: [] }, // Auto-Port & Nuke
-    { name: "backdoor-auto.js", args: [] }, // Print backdoor path strings
+    { name: "backdoor-auto.js", args: [] },
     { name: "target-finder.js", args: [] }, // Score and select active target
     { name: "cloud-servers.js", args: [] }, // Purchase and scale server RAM
     { name: "workers.js", args: [] }, // Multi-phase HGW thread coordinator
-    { name: "ipvgo.js", args: [] }, // IPvGO board automation
+    { name: "ipvgo.js", args: [] },
     { name: "dnetWorm.js", args: [] }, // Dark Net infiltration and cache looting
+    { name: "gang.js", args: [] },
+    { name: "hacknet-auto.js", args: [] },
   ];
 
   for (const proc of processes) {

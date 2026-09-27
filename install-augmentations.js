@@ -67,7 +67,7 @@ export async function main(ns) {
     `[4/4] Wallet Ready: $${ns.format.number(ns.getServerMoneyAvailable("home"))}`,
   );
   ns.tprint(
-    "Run 'buy-augs.js', then launch: ns.singularity.installAugmentations('bootstrap.js')",
+    "run augs-buyer.js , then launch: ns.singularity.installAugmentations('bootstrap.js')",
   );
   ns.tprint("==========================================");
 }
