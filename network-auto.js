@@ -1,5 +1,21 @@
-//Runs on a 10-second loop.
-//Crawls all servers, opens available ports using owned .exe files, and calls ns.nuke().
+// This script requires 7.60GB of RAM to run for 1 thread(s)
+//   2.00GB | singularity.purchaseTor (fn)
+//   2.00GB | singularity.purchaseProgram (fn)
+//   1.60GB | baseCost (misc)
+//   1.00GB | run (fn)
+//   0.20GB | scan (fn)
+//   0.10GB | getServerMoneyAvailable (fn)
+//   0.10GB | fileExists (fn)
+//   0.10GB | getServerNumPortsRequired (fn)
+//   0.10GB | isRunning (fn)
+//   0.05GB | hasTorRouter (fn)
+//   0.05GB | hasRootAccess (fn)
+//   0.05GB | brutessh (fn)
+//   0.05GB | ftpcrack (fn)
+//   0.05GB | relaysmtp (fn)
+//   0.05GB | httpworm (fn)
+//   0.05GB | sqlinject (fn)
+//   0.05GB | nuke (fn)
 
 /** @param {NS} ns */
 export async function main(ns) {

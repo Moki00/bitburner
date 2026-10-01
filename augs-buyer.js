@@ -45,7 +45,6 @@ export async function main(ns) {
 
     if (candidates.length === 0) break;
 
-    // Deduplicate augs across shared factions, keeping the valid entry
     const uniqueMap = new Map();
     for (const item of candidates) {
       if (!uniqueMap.has(item.aug)) {
@@ -53,19 +52,14 @@ export async function main(ns) {
       }
     }
 
-    // Sort descending by CURRENT cost to get maximum efficiency from the 1.9x curve
     const sorted = Array.from(uniqueMap.values()).sort(
       (a, b) => b.cost - a.cost,
     );
 
-    // Find the most expensive augmentation we can afford right now
     const money = ns.getServerMoneyAvailable("home");
     const nextBest = sorted.find((item) => money >= item.cost);
 
-    if (!nextBest) {
-      // Cannot afford any remaining available augmentations
-      break;
-    }
+    if (!nextBest) break;
 
     if (ns.singularity.purchaseAugmentation(nextBest.faction, nextBest.aug)) {
       ns.tprint(
@@ -77,39 +71,37 @@ export async function main(ns) {
     }
   }
 
-  // 2. Dump All Remaining Cash into NeuroFlux Governor using Highest-Rep Faction
-  const validFactions = TARGET_FACTIONS.filter((f) =>
-    ns.getPlayer().factions.includes(f),
-  );
+  // 2. Dump All Remaining Cash into NeuroFlux Governor across ANY eligible joined faction
+  while (true) {
+    const money = ns.getServerMoneyAvailable("home");
+    const nfgCost = ns.singularity.getAugmentationPrice("NeuroFlux Governor");
+    const nfgRepReq =
+      ns.singularity.getAugmentationRepReq("NeuroFlux Governor");
 
-  if (validFactions.length > 0) {
-    // Pick faction with highest reputation
-    validFactions.sort(
-      (a, b) =>
-        ns.singularity.getFactionRep(b) - ns.singularity.getFactionRep(a),
+    if (money < nfgCost) break;
+
+    // Find any joined faction that has enough reputation for the next level
+    const playerFactions = ns.getPlayer().factions;
+    const eligibleFaction = playerFactions.find(
+      (f) => ns.singularity.getFactionRep(f) >= nfgRepReq,
     );
-    const bestRepFaction = validFactions[0];
 
-    while (
-      ns.getServerMoneyAvailable("home") >=
-        ns.singularity.getAugmentationPrice("NeuroFlux Governor") &&
-      ns.singularity.getFactionRep(bestRepFaction) >=
-        ns.singularity.getAugmentationRepReq("NeuroFlux Governor")
+    if (!eligibleFaction) {
+      ns.print(
+        `[NFG STOP] Insufficient reputation across all factions for next NFG level (${ns.format.number(nfgRepReq)} rep needed).`,
+      );
+      break;
+    }
+
+    if (
+      ns.singularity.purchaseAugmentation(eligibleFaction, "NeuroFlux Governor")
     ) {
-      const nfgCost = ns.singularity.getAugmentationPrice("NeuroFlux Governor");
-      if (
-        ns.singularity.purchaseAugmentation(
-          bestRepFaction,
-          "NeuroFlux Governor",
-        )
-      ) {
-        ns.tprint(
-          `[BOUGHT NFG] NeuroFlux Governor upgraded via ${bestRepFaction} for $${ns.format.number(nfgCost)}`,
-        );
-        purchasedCount++;
-      } else {
-        break;
-      }
+      ns.tprint(
+        `[BOUGHT NFG] NeuroFlux Governor upgraded via ${eligibleFaction} for $${ns.format.number(nfgCost)}`,
+      );
+      purchasedCount++;
+    } else {
+      break;
     }
   }
 

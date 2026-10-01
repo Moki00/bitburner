@@ -1,25 +1,27 @@
+// This script requires 7.95GB of RAM to run for 1 thread(s)
+//   2.00GB | getServer (fn)
+//   2.00GB | singularity.connect (fn)
+//   2.00GB | singularity.installBackdoor (fn)
+//   1.60GB | baseCost (misc)
+//   0.20GB | scan (fn)
+//   0.10GB | fileExists (fn)
+//   0.05GB | getHackingLevel (fn)
+
 /** @param {NS} ns */
 export async function main(ns) {
-  const myHack = ns.getHackingLevel();
+  ns.disableLog("ALL");
 
-  // 1. Define the ONLY static servers worth backdooring
   const CRITICAL_SERVERS = new Set([
-    "CSEC", // CyberSec
-    "avmnite-02h", // NiteSec
-    "I.I.I.I", // The Black Hand
-    "run4theh111z", // BitRunners
-    "fulcrumassets", // Fulcrum Secret Technologies
-    "The-Cave", // Daedalus
-    "w0r1d_d3m0n", // Victory / Red Pill
+    "n00dles",
+    "CSEC",
+    "avmnite-02h",
+    "I.I.I.I",
+    "run4theh111z",
+    "fulcrumassets",
+    "icarus",
+    "The-Cave",
+    "w0r1d_d43m0n",
   ]);
-
-  // 2. Add your active farm target from target.txt (if it exists)
-  if (ns.fileExists("target.txt")) {
-    const activeTarget = ns.read("target.txt").trim();
-    if (activeTarget) CRITICAL_SERVERS.add(activeTarget);
-  }
-
-  ns.tprint(`=== Backdoor Targets (Hack: ${myHack}) ===`);
 
   function getPath(target, parentMap) {
     let path = [target];
@@ -31,45 +33,57 @@ export async function main(ns) {
     return path;
   }
 
-  const queue = ["home"];
-  const visited = new Set(["home"]);
-  const parentMap = new Map();
-  let found = 0;
+  while (true) {
+    const myHack = ns.getHackingLevel();
 
-  while (queue.length > 0) {
-    const current = queue.shift();
+    // Dynamically include active target from target.txt
+    if (ns.fileExists("target.txt", "home")) {
+      const activeTarget = ns.read("target.txt").trim();
+      if (activeTarget) CRITICAL_SERVERS.add(activeTarget);
+    }
 
-    for (const neighbor of ns.scan(current)) {
-      if (!visited.has(neighbor)) {
-        visited.add(neighbor);
-        parentMap.set(neighbor, current);
-        queue.push(neighbor);
+    const queue = ["home"];
+    const visited = new Set(["home"]);
+    const parentMap = new Map();
 
-        // Evaluate backdoor status if in critical list
-        if (CRITICAL_SERVERS.has(neighbor)) {
-          const reqHack = ns.getServerRequiredHackingLevel(neighbor);
-          const server = ns.getServer(neighbor);
+    while (queue.length > 0) {
+      const current = queue.shift();
 
-          // Filter: Must be rooted, hackable, and not backdoored yet
-          if (
-            ns.hasRootAccess(neighbor) &&
-            myHack >= reqHack &&
-            !server.backdoorInstalled
-          ) {
-            const path = getPath(neighbor, parentMap);
-            const connectCmd =
-              path.map((node) => `connect ${node}`).join("; ") + "; backdoor;";
+      for (const neighbor of ns.scan(current)) {
+        if (!visited.has(neighbor)) {
+          visited.add(neighbor);
+          parentMap.set(neighbor, current);
+          queue.push(neighbor);
 
-            ns.tprint(`[IMPORTANT BACKDOOR] ${neighbor} (Req: ${reqHack})`);
-            ns.tprint(`    ${connectCmd}\n`);
-            found++;
+          if (CRITICAL_SERVERS.has(neighbor)) {
+            const server = ns.getServer(neighbor);
+
+            if (
+              server.hasAdminRights &&
+              !server.backdoorInstalled &&
+              myHack >= server.requiredHackingSkill
+            ) {
+              // Exclude w0r1d_d43m0n from auto-backdooring if you want manual control of the reset
+              if (neighbor === "w0r1d_d43m0n") {
+                ns.tprint("[ALERT] w0r1d_d43m0n is ready to backdoor!");
+                continue;
+              }
+
+              const path = getPath(neighbor, parentMap);
+              for (const node of path) {
+                ns.singularity.connect(node);
+              }
+
+              ns.print(`[BACKDOOR] Installing backdoor at ${neighbor}...`);
+              await ns.singularity.installBackdoor();
+              ns.tprint(`[BACKDOOR] Successfully backdoored ${neighbor}!`);
+              ns.singularity.connect("home");
+            }
           }
         }
       }
     }
-  }
 
-  if (found === 0) {
-    ns.tprint("No important backdoors available");
+    await ns.sleep(20000); // 20k ms = 20 seconds
   }
 }
