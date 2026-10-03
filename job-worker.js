@@ -2,73 +2,110 @@
 export async function main(ns) {
   ns.disableLog("ALL");
   ns.ui.openTail();
-  ns.ui.resizeTail(660, 420);
+  ns.ui.resizeTail(600, 360);
 
-  // Ranked from highest payout and faction value down to entry-level
-  const employerPriority = [
-    "ECorp",
-    "MegaCorp",
-    "Fulcrum Technologies",
-    "KuaiGong International",
-    "Blade Industries",
-    "Four Sigma",
-    "Clarke Incorporated",
-    "Bachman & Associates",
-    "NWO",
-    "OmniTek Incorporated",
-    "Alpha Enterprises", // High early wages & Sector-12 base
-    "Rho Construction",
-    "Aevum Police Headquarters",
-    "Omega Software",
-    "FoodNStuff",
+  // Prioritized Faction Milestone Queue
+  const factionGoals = [
+    { name: "CyberSec", rep: 18750, type: "hacking" },
+    { name: "NiteSec", rep: 112500, type: "hacking" },
+    { name: "The Black Hand", rep: 100000, type: "hacking" },
+    { name: "BitRunners", rep: 500000, type: "hacking" },
+    { name: "Daedalus", rep: 2500000, type: "hacking" },
   ];
 
-  const careerTracks = ["Software", "IT", "Network Engineer"];
+  // Prioritized Corporate Targets
+  const corporateGoals = [
+    { name: "Alpha Enterprises", rep: 2000, field: "Software" },
+    { name: "Fulcrum Technologies", rep: 250000, field: "Software" },
+    { name: "ECorp", rep: 200000, field: "Software" },
+    { name: "MegaCorp", rep: 200000, field: "Software" },
+  ];
 
   while (true) {
-    // 1. Check and claim promotions across all companies
-    for (const company of employerPriority) {
-      for (const track of careerTracks) {
-        try {
-          if (ns.singularity.applyToCompany(company, track)) {
-            ns.tprint(`[PROMOTION] Advanced in ${company} (${track})!`);
-          }
-        } catch {}
-      }
-    }
-
-    // Pull current player state after processing promotions
     const player = ns.getPlayer();
-    const activeJobs = player.jobs;
+    const ownedAugs = ns.singularity.getOwnedAugmentations(true);
 
-    // 2. Select the highest priority company where you hold a position
-    let bestEmployer = null;
-    for (const company of employerPriority) {
-      if (activeJobs[company]) {
-        bestEmployer = company;
-        break;
+    // Step A: Find the first joined faction that still has unowned augmentations
+    let activeFactionTarget = null;
+
+    for (const goal of factionGoals) {
+      if (!player.factions.includes(goal.name)) continue;
+
+      // Get faction augmentations, excluding the repeatable NeuroFlux Governor
+      const factionAugs = ns.singularity
+        .getAugmentationsFromFaction(goal.name)
+        .filter((aug) => aug !== "NeuroFlux Governor");
+
+      // Check if any augmentations from this faction are still missing
+      const missingAugs = factionAugs.filter((aug) => !ownedAugs.includes(aug));
+
+      if (missingAugs.length > 0) {
+        const currentRep = ns.singularity.getFactionRep(goal.name);
+        activeFactionTarget = {
+          ...goal,
+          currentRep,
+          missingCount: missingAugs.length,
+        };
+        break; // Found our current focus faction
       }
     }
 
-    // 3. Clock into your best job automatically
-    if (bestEmployer) {
-      ns.singularity.workForCompany(bestEmployer, false);
-    }
+    if (activeFactionTarget) {
+      ns.singularity.workForFaction(
+        activeFactionTarget.name,
+        activeFactionTarget.type,
+        false,
+      );
 
-    // 4. Telemetry Dashboard
-    ns.clearLog();
-    ns.print("=============== CAREER MONITOR ===============");
-    ns.print(`Hacking Skill:    ${player.skills.hacking}`);
-    ns.print(`Active Employer:  ${bestEmployer || "None"}`);
-    ns.print(
-      `Current Title:    ${bestEmployer ? activeJobs[bestEmployer] : "Unemployed"}`,
-    );
-    ns.print(`----------------------------------------------`);
-    ns.print("All Active Positions:");
-    for (const [comp, title] of Object.entries(activeJobs)) {
-      ns.print(`  * ${comp.padEnd(26)}: ${title}`);
+      ns.clearLog();
+      ns.print("=============== FACTION PIPELINE ===============");
+      ns.print(`Target Faction:   ${activeFactionTarget.name}`);
+      ns.print(`Missing Augs:     ${activeFactionTarget.missingCount}`);
+      ns.print(
+        `Current Rep:      ${ns.format.number(activeFactionTarget.currentRep, 2)}`,
+      );
+      ns.print(
+        `Goal Rep:         ${ns.format.number(activeFactionTarget.rep, 2)}`,
+      );
+      ns.print(
+        `Progress:         ${((activeFactionTarget.currentRep / activeFactionTarget.rep) * 100).toFixed(1)}%`,
+      );
+      ns.print(`Hacking Skill:    ${player.skills.hacking}`);
+      ns.print("================================================");
+    } else {
+      // Step B: Advance corporate targets if all joined faction augs are acquired
+      let activeCorpTarget = null;
+      for (const corp of corporateGoals) {
+        try {
+          ns.singularity.applyToCompany(corp.name, corp.field);
+        } catch {}
+
+        const companyRep = ns.singularity.getCompanyRep(corp.name);
+        if (companyRep < corp.rep) {
+          activeCorpTarget = { ...corp, companyRep };
+          break;
+        }
+      }
+
+      if (activeCorpTarget) {
+        ns.singularity.workForCompany(activeCorpTarget.name, false);
+
+        ns.clearLog();
+        ns.print("=============== CORPORATE PIPELINE ===============");
+        ns.print(`Target Company:   ${activeCorpTarget.name}`);
+        ns.print(
+          `Current Rep:      ${ns.format.number(activeCorpTarget.companyRep, 2)}`,
+        );
+        ns.print(
+          `Goal Rep:         ${ns.format.number(activeCorpTarget.rep, 2)}`,
+        );
+        ns.print(
+          `Progress:         ${((activeCorpTarget.companyRep / activeCorpTarget.rep) * 100).toFixed(1)}%`,
+        );
+        ns.print(`Hacking Skill:    ${player.skills.hacking}`);
+        ns.print("==================================================");
+      }
     }
-    ns.print("==============================================");
 
     await ns.sleep(15000);
   }
