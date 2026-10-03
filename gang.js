@@ -2,13 +2,13 @@
 export async function main(ns) {
   ns.disableLog("ALL");
   ns.ui.openTail();
-  const ASCEND_THRESHOLD = 2.6;
-  const PERCENTAGE_OF_FUNDS_FOR_EQUIPMENT = 0.5;
 
   if (!ns.gang.inGang()) {
     ns.tprint("[GANG] Join a gang first!");
     return;
   }
+
+  let loopCounter = 0;
 
   while (true) {
     const myGang = ns.gang.getGangInformation();
@@ -18,7 +18,8 @@ export async function main(ns) {
     // 1. Auto-Recruit up to 12 members
     if (ns.gang.canRecruitMember()) {
       const nextIndex = ns.gang.getMemberNames().length + 1;
-      const newName = `agent-${nextIndex}`;
+      const newName =
+        nextIndex < 10 ? `agent-00${nextIndex}` : `agent-0${nextIndex}`;
       if (ns.gang.recruitMember(newName)) {
         ns.tprint(`[RECRUIT] Enlisted gang member: ${newName}`);
       }
@@ -27,38 +28,32 @@ export async function main(ns) {
     const members = ns.gang.getMemberNames();
     const gearList = ns.gang.getEquipmentNames();
     const availableFunds = ns.getServerMoneyAvailable("home");
+    const ASCEND_THRESHOLD = members.length < 12 ? 1.4 : 1.6;
+    const PERCENTAGE_OF_FUNDS_FOR_EQUIPMENT = 0.05;
     const spendLimit = availableFunds * PERCENTAGE_OF_FUNDS_FOR_EQUIPMENT;
 
-    // 2. Clash Engagement Evaluation (Runs once per cycle outside member loop)
-    let readyToWar = true;
-    if (allGang[myGang.faction].territory < 1.0) {
-      for (const [gangName, gangData] of Object.entries(allGang)) {
-        if (gangName === myGang.faction) continue;
-        if (gangData.territory > 0) {
-          const winChance = ns.gang.getChanceToWinClash(gangName);
-          if (winChance < 0.85) {
-            readyToWar = false;
-            break;
-          }
-        }
+    // 2. Clash Engagement Check (Fire helper every 60 seconds)
+    if (loopCounter % 12 === 0 && allGang[myGang.faction].territory < 1.0) {
+      if (!ns.isRunning("gang-war-eval.js", "home")) {
+        ns.run("gang-war-eval.js");
       }
-      ns.gang.setTerritoryWarfare(readyToWar);
-    } else {
-      ns.gang.setTerritoryWarfare(false);
     }
 
     // 3. Equipment Upgrades and Ascension
     for (const member of members) {
       const memberInfo = ns.gang.getMemberInformation(member);
 
-      // Auto-Ascend Check
+      // Ascend Check
       const ascResult = ns.gang.getAscensionResult(member);
       if (ascResult) {
         const threshold = isHackingGang
           ? ascResult.hack
           : (ascResult.str + ascResult.def + ascResult.dex + ascResult.agi) / 4;
-        if (threshold >= ASCEND_THRESHOLD) {
-          ns.gang.ascendMember(member);
+        if (
+          threshold >= ASCEND_THRESHOLD &&
+          !ns.isRunning("gAscend.js", "home")
+        ) {
+          ns.run("gAscend.js", 1, member);
           ns.gang.setMemberTask(
             member,
             isHackingGang ? "Train Hacking" : "Train Combat",
@@ -79,15 +74,17 @@ export async function main(ns) {
         if (
           isRelevant &&
           cost <= spendLimit &&
-          !memberInfo.upgrades.includes(item)
+          !memberInfo.upgrades.includes(item) &&
+          !ns.isRunning("gBuyGangEquipment.js", "home")
         ) {
-          ns.gang.purchaseEquipment(member, item);
+          ns.run("gBuyGangEquipment.js", 1, member, item);
         }
       }
     }
 
     // 4. Dynamic Task Routing
-    const powerBuilders = ["Moki", "Mike", "Rioz"];
+    // Dynamically assign the first 3 agents to territory duty once strong enough
+    const powerBuilders = ["agent-008", "agent-009", "agent-010"];
 
     for (const member of members) {
       const memberInfo = ns.gang.getMemberInformation(member);
@@ -102,7 +99,6 @@ export async function main(ns) {
       }
 
       if (isHackingGang) {
-        // Hacking Gang
         if (memberInfo.hack < 200) {
           ns.gang.setMemberTask(member, "Train Hacking");
         } else if (memberInfo.hack < 800) {
@@ -113,7 +109,6 @@ export async function main(ns) {
           ns.gang.setMemberTask(member, "Money Laundering");
         }
       } else {
-        // Combat Gang
         const combatAvg =
           (memberInfo.str + memberInfo.def + memberInfo.dex + memberInfo.agi) /
           4;
@@ -131,7 +126,6 @@ export async function main(ns) {
         } else if (combatAvg < 1200) {
           ns.gang.setMemberTask(member, "Threaten & Blackmail");
         } else {
-          // Phase 4: Territory builders vs revenue generators
           if (myGang.territory < 1.0 && powerBuilders.includes(member)) {
             ns.gang.setMemberTask(member, "Territory Warfare");
           } else {
@@ -142,18 +136,19 @@ export async function main(ns) {
     }
 
     // 5. Gang Overview and Territory Telemetry Log
+    ns.clearLog();
     ns.print("========================================");
     ns.print(
       `[GANG OVERVIEW]\n` +
-        `Respect: ${ns.format.number(myGang.respect)} (+${ns.format.number(myGang.respectGainRate)}/sec)\n` +
-        `Money: ${ns.format.number(myGang.moneyGainRate)}/s\n` +
-        `Wanted: ${ns.format.number(myGang.wantedLevel)} (+${ns.format.number(myGang.wantedLevelGainRate)}/s)\n` +
-        `Penalty: ${(-(1 - myGang.wantedPenalty) * 100).toFixed(2)}% | Efficiency: ${(myGang.wantedPenalty * 100).toFixed(1)}%\n` +
-        `Efficiency: ${(myGang.wantedPenalty * 100).toFixed(1)}% (Lost:${((1 - myGang.wantedPenalty) * 100).toFixed(1)}%) \n` +
-        `Territory: ${(allGang[myGang.faction].territory * 100).toFixed(2)}% | Power: ${allGang[myGang.faction].power.toFixed(1)} | War: ${readyToWar}`,
+        `Respect:   ${ns.format.number(myGang.respect, 1)} (+${ns.format.number(myGang.respectGainRate, 1)}/sec)\n` +
+        `Money:     $${ns.format.number(myGang.moneyGainRate, 1)}/s\n` +
+        `Wanted:    ${ns.format.number(myGang.wantedLevel, 1)} (Penalty: ${(-(1 - myGang.wantedPenalty) * 100).toFixed(1)}%)\n` +
+        `Efficiency: ${(myGang.wantedPenalty * 100).toFixed(1)}%\n` +
+        `Territory: ${(allGang[myGang.faction].territory * 100).toFixed(1)}% | Power: ${allGang[myGang.faction].power.toFixed(1)} | War: ${myGang.territoryWarfareEngaged}`,
     );
     ns.print("========================================");
 
+    loopCounter++;
     await ns.sleep(5000);
   }
 }
