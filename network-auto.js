@@ -1,21 +1,5 @@
-// This script requires 7.60GB of RAM to run for 1 thread(s)
-//   2.00GB | singularity.purchaseTor (fn)
-//   2.00GB | singularity.purchaseProgram (fn)
-//   1.60GB | baseCost (misc)
-//   1.00GB | run (fn)
-//   0.20GB | scan (fn)
-//   0.10GB | getServerMoneyAvailable (fn)
-//   0.10GB | fileExists (fn)
-//   0.10GB | getServerNumPortsRequired (fn)
-//   0.10GB | isRunning (fn)
-//   0.05GB | hasTorRouter (fn)
-//   0.05GB | hasRootAccess (fn)
-//   0.05GB | brutessh (fn)
-//   0.05GB | ftpcrack (fn)
-//   0.05GB | relaysmtp (fn)
-//   0.05GB | httpworm (fn)
-//   0.05GB | sqlinject (fn)
-//   0.05GB | nuke (fn)
+//Runs on a 10-second loop.
+//Crawls all servers, opens available ports using owned .exe files, and calls ns.nuke().
 
 /** @param {NS} ns */
 export async function main(ns) {
@@ -39,7 +23,7 @@ export async function main(ns) {
     { name: "relaySMTP.exe", cost: 5_000_000 },
     // { name: "DeepscanV2.exe", cost: 25_000_000 },
     { name: "HTTPWorm.exe", cost: 30_000_000 },
-    // { name: "DarkscapeNavigator.exe", cost: 50_000_000 },
+    { name: "DarkscapeNavigator.exe", cost: 50_000_000 },
     { name: "SQLInject.exe", cost: 250_000_000 },
     // { name: "Formulas.exe", cost: 5_000_000_000 },
   ];
@@ -114,13 +98,48 @@ export async function main(ns) {
       }
     }
 
-    // TRIGGER: If new servers were nuked, run target-finder.js and backdoor-auto.js
+    // 4. Trigger target recalculation and backdoors on new root access
     if (newRoots > 0) {
-      if (!ns.isRunning("target-finder.js", "home")) {
-        ns.run("target-finder.js");
-      }
-      if (!ns.isRunning("backdoor-auto.js", "home")) {
-        ns.run("backdoor-auto.js");
+      const script = "target-finder.js";
+      const scriptRam = ns.getScriptRam(script, "home");
+
+      // Check candidates and purchased cloud servers for sufficient FREE RAM
+      const candidates = [
+        "cloud-01",
+        "cloud-02",
+        "foodnstuff",
+        "joesguns",
+        "sigma-cosmetics",
+        "hong-fang-tea",
+      ];
+
+      const remoteHost = candidates.find(
+        (h) =>
+          ns.serverExists(h) &&
+          ns.hasRootAccess(h) &&
+          ns.getServerMaxRam(h) - ns.getServerUsedRam(h) >= scriptRam,
+      );
+
+      if (remoteHost) {
+        await ns.scp(script, remoteHost, "home");
+        ns.scriptKill(script, remoteHost);
+        ns.scriptKill(script, "home");
+        const pid = ns.exec(script, remoteHost, 1);
+
+        if (pid > 0) {
+          ns.tprint(
+            `[SUCCESS] Deployed and running ${script} on ${remoteHost} (PID: ${pid}).`,
+          );
+        } else {
+          ns.tprint(`[FAIL] Could not launch ${script} on ${remoteHost}.`);
+        }
+      } else {
+        // Fallback to home if no candidate server has free memory
+        ns.scriptKill(script, "home");
+        const pid = ns.run(script, 1);
+        if (pid > 0) {
+          ns.tprint(`[FALLBACK] Running ${script} on home (PID: ${pid}).`);
+        }
       }
     }
 

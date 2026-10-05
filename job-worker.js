@@ -2,23 +2,24 @@
 export async function main(ns) {
   ns.disableLog("ALL");
   ns.ui.openTail();
-  ns.ui.resizeTail(600, 360);
+  ns.ui.resizeTail(600, 300);
 
   // Prioritized Faction Milestone Queue
   const factionGoals = [
-    { name: "CyberSec", rep: 18750, type: "hacking" },
-    { name: "NiteSec", rep: 112500, type: "hacking" },
-    { name: "The Black Hand", rep: 100000, type: "hacking" },
-    { name: "BitRunners", rep: 500000, type: "hacking" },
-    { name: "Daedalus", rep: 2500000, type: "hacking" },
+    { name: "CyberSec", rep: 18_750, type: "hacking" },
+    { name: "NiteSec", rep: 112_500, type: "hacking" },
+    { name: "The Black Hand", rep: 100_000, type: "hacking" },
+    { name: "BitRunners", rep: 500_000, type: "hacking" },
+    { name: "Daedalus", rep: 2_500_000, type: "hacking" },
+    { name: "Volhaven", rep: 50_000, type: "hacking" },
   ];
 
   // Prioritized Corporate Targets
   const corporateGoals = [
-    { name: "Alpha Enterprises", rep: 2000, field: "Software" },
-    { name: "Fulcrum Technologies", rep: 250000, field: "Software" },
-    { name: "ECorp", rep: 200000, field: "Software" },
-    { name: "MegaCorp", rep: 200000, field: "Software" },
+    { name: "Alpha Enterprises", rep: 2_000, field: "Software" },
+    { name: "Fulcrum Technologies", rep: 250_000, field: "Software" },
+    { name: "ECorp", rep: 200_000, field: "Software" },
+    { name: "MegaCorp", rep: 200_000, field: "Software" },
   ];
 
   while (true) {
