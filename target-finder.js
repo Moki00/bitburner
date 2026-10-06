@@ -75,9 +75,17 @@ export async function main(ns) {
       const reset = "\u001b[0m";
 
       if (finalTarget !== currentSavedTarget) {
+        // 1. Write to the local filesystem (foodnstuff, cloud-01, etc.)
         await ns.write("target.txt", finalTarget, "w");
+
+        // 2. If running remotely, push target.txt to home
+        const host = ns.getHostname();
+        if (host !== "home") {
+          await ns.scp("target.txt", "home", host);
+        }
+
         ns.tprint(
-          `Target set to: ${magenta}${finalTarget}${reset} (Score: $${ns.format.number(finalScore)})`,
+          `Target set to: ${magenta}${finalTarget}${reset} (Score: $${ns.format.number(finalScore)}) [Synced to home]`,
         );
       }
 
