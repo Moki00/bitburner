@@ -1,33 +1,24 @@
 /**
  * z-buy-install.js
- * Monitors CyberSec until its final augmentation is unlocked and affordable,
- * buys all available augmentations, dumps leftover funds into NeuroFlux, and installs.
+ * Automatically detects the faction you are currently working for,
+ * tracks its highest unowned augmentation, waits until it is unlocked and affordable,
+ * purchases all eligible augmentations across your factions, sinks leftover cash
+ * into NeuroFlux Governor, and installs augmentations with a reboot into startup.js.
  *
  * @param {NS} ns
  */
 export async function main(ns) {
   ns.disableLog("ALL");
-  ns.ui.openTail();
-  ns.ui.resizeTail(600, 320);
 
-  const targetFaction = "CyberSec";
-  const startupScript = "startup.js";
-
-  if (!ns.getPlayer().factions.includes(targetFaction)) {
-    ns.tprint(`[ERROR] You are not currently a member of ${targetFaction}!`);
-    return;
-  }
-
-  // 1. Identify CyberSec's highest-rep unowned augmentation
-  function getCyberSecTarget() {
+  // Helper: Find highest-rep unowned augmentation for a given faction
+  function getFactionTarget(factionName) {
     const owned = new Set(ns.singularity.getOwnedAugmentations(true));
     const factionAugs = ns.singularity
-      .getAugmentationsFromFaction(targetFaction)
+      .getAugmentationsFromFaction(factionName)
       .filter((aug) => aug !== "NeuroFlux Governor" && !owned.has(aug));
 
     if (factionAugs.length === 0) return null;
 
-    // Sort descending by rep requirement to find the final milestone
     factionAugs.sort(
       (a, b) =>
         ns.singularity.getAugmentationRepReq(b) -
@@ -42,47 +33,65 @@ export async function main(ns) {
     };
   }
 
-  // 2. Loop until the final CyberSec augmentation is unlocked and affordable
+  // 1. Monitor loop: dynamically check current faction work
   while (true) {
-    const target = getCyberSecTarget();
+    const work = ns.singularity.getCurrentWork();
 
-    if (!target) {
-      ns.print(
-        `[CYBERSEC] All CyberSec augmentations already acquired! Proceeding to buy & install...`,
-      );
+    // Catches if not working for a faction
+    if (work?.type !== "FACTION") {
+      ns.clearLog();
+      ns.tprint("=============== AUTO BUY & INSTALL ===============");
+      ns.tprint("Change working for a faction.");
+      ns.tprint("==================================================");
+      await ns.sleep(5000);
       break;
     }
 
-    const currentRep = ns.singularity.getFactionRep(targetFaction);
+    const currentFaction = work.factionName;
+    const target = getFactionTarget(currentFaction);
+
+    // If all unique augmentations for this faction are already bought/installed
+    if (!target) {
+      ns.clearLog();
+      ns.tprint("=============== AUTO BUY & INSTALL ===============");
+      ns.tprint(`Faction : ${currentFaction}`);
+      ns.tprint("Status  : All unique augmentations acquired!");
+      ns.tprint("Ready to buy and reboot if funds permit.");
+      ns.tprint("==================================================");
+      break;
+    }
+
+    const currentRep = ns.singularity.getFactionRep(currentFaction);
     const currentMoney = ns.getServerMoneyAvailable("home");
     const repMet = currentRep >= target.repReq;
     const moneyMet = currentMoney >= target.price;
 
     ns.clearLog();
-    ns.print("================ CYBERSEC GATE ================");
-    ns.print(`Target Aug     : ${target.name}`);
-    ns.print(
+    ns.tprint("=============== AUTO BUY & INSTALL ===============");
+    ns.tprint(`Active Faction : ${currentFaction}`);
+    ns.tprint(`Target Aug     : ${target.name}`);
+    ns.tprint(
       `Reputation     : ${ns.format.number(currentRep, 2)} / ${ns.format.number(target.repReq, 2)} (${((currentRep / target.repReq) * 100).toFixed(1)}%)`,
     );
-    ns.print(
-      `Funds Needed   : $${ns.format.number(currentMoney, 2)} / $${ns.format.number(target.price, 2)}`,
+    ns.tprint(
+      `Target Cost    : $${ns.format.number(currentMoney, 2)} / $${ns.format.number(target.price, 2)}`,
     );
-    ns.print(
+    ns.tprint(
       `Status         : ${repMet ? "Rep Ready!" : "Grinding Rep..."} | ${moneyMet ? "Funds Ready!" : "Need Cash..."}`,
     );
-    ns.print("===============================================");
+    ns.tprint("==================================================");
 
     if (repMet && moneyMet) {
       ns.tprint(
-        `[CYBERSEC] Final augment (${target.name}) ready! Initiating purchase sequence...`,
+        `[INSTALL-MANAGER] Final augment for ${currentFaction} (${target.name}) ready! Starting checkout...`,
       );
       break;
     }
 
-    await ns.sleep(5000);
+    await ns.sleep(4000);
   }
 
-  // 3. Collect and purchase all available augmentations across all joined factions
+  // 2. Discover and sort all unowned augmentations across all joined factions
   const ownedAugs = new Set(ns.singularity.getOwnedAugmentations(true));
   const playerFactions = ns.getPlayer().factions;
   const candidates = [];
@@ -110,7 +119,7 @@ export async function main(ns) {
     }
   }
 
-  // Sort highest price first to mitigate the 1.9x compounding cost
+  // Sort descending by price to beat the 1.9x compounding cost multiplier
   candidates.sort((a, b) => b.price - a.price);
 
   let purchasedCount = 0;
@@ -127,7 +136,7 @@ export async function main(ns) {
     }
   }
 
-  // 4. Dump leftover funds into NeuroFlux Governor
+  // 3. Dump remaining balance into NeuroFlux Governor
   let boughtNeuroFlux = true;
   while (boughtNeuroFlux) {
     boughtNeuroFlux = false;
@@ -152,10 +161,16 @@ export async function main(ns) {
     }
   }
 
-  // 5. Install and reboot
-  ns.tprint(
-    `[AUG INSTALL] Successfully purchased ${purchasedCount} augmentations. Resetting into ${startupScript}...`,
-  );
-  await ns.sleep(2500);
-  ns.singularity.installAugmentations(startupScript);
+  // 4. Install augmentations and reboot directly into startup.js
+  if (purchasedCount > 0) {
+    ns.tprint(
+      `[AUG INSTALL] Successfully purchased ${purchasedCount} augmentations. Installing and rebooting with startup.js...`,
+    );
+    await ns.sleep(2500);
+    ns.singularity.installAugmentations("startup.js");
+  } else {
+    ns.tprint(
+      `[AUG INSTALL] No augmentations were purchased. Aborting install to prevent unnecessary reset.`,
+    );
+  }
 }
