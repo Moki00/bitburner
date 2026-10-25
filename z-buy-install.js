@@ -37,14 +37,13 @@ export async function main(ns) {
   while (true) {
     const work = ns.singularity.getCurrentWork();
 
-    // Catches if not working for a faction
+    // Stops script if not working for a faction
     if (work?.type !== "FACTION") {
-      ns.clearLog();
       ns.tprint("=============== AUTO BUY & INSTALL ===============");
-      ns.tprint("Change working for a faction.");
+      ns.tprint("Change to working for a faction.");
       ns.tprint("==================================================");
       await ns.sleep(5000);
-      break;
+      return;
     }
 
     const currentFaction = work.factionName;
@@ -52,7 +51,6 @@ export async function main(ns) {
 
     // If all unique augmentations for this faction are already bought/installed
     if (!target) {
-      ns.clearLog();
       ns.tprint("=============== AUTO BUY & INSTALL ===============");
       ns.tprint(`Faction : ${currentFaction}`);
       ns.tprint("Status  : All unique augmentations acquired!");
@@ -66,18 +64,17 @@ export async function main(ns) {
     const repMet = currentRep >= target.repReq;
     const moneyMet = currentMoney >= target.price;
 
-    ns.clearLog();
     ns.tprint("=============== AUTO BUY & INSTALL ===============");
-    ns.tprint(`Active Faction : ${currentFaction}`);
-    ns.tprint(`Target Aug     : ${target.name}`);
+    ns.tprint(`-  Faction   : ${currentFaction}`);
+    ns.tprint(`-  Augment   : ${target.name}`);
     ns.tprint(
-      `Reputation     : ${ns.format.number(currentRep, 2)} / ${ns.format.number(target.repReq, 2)} (${((currentRep / target.repReq) * 100).toFixed(1)}%)`,
+      `- Reputation : ${ns.format.number(currentRep, 2)} / ${ns.format.number(target.repReq, 2)} (${((currentRep / target.repReq) * 100).toFixed(1)}%)`,
     );
     ns.tprint(
-      `Target Cost    : $${ns.format.number(currentMoney, 2)} / $${ns.format.number(target.price, 2)}`,
+      `-     Cost   : $${ns.format.number(currentMoney, 2)} / $${ns.format.number(target.price, 2)}`,
     );
     ns.tprint(
-      `Status         : ${repMet ? "Rep Ready!" : "Grinding Rep..."} | ${moneyMet ? "Funds Ready!" : "Need Cash..."}`,
+      `-   Status   : ${repMet ? "Rep Ready!" : "Grinding Rep..."} | ${moneyMet ? "Funds Ready!" : "Need Cash..."}`,
     );
     ns.tprint("==================================================");
 
@@ -148,7 +145,8 @@ export async function main(ns) {
 
       if (money >= price && factionRep >= repReq) {
         if (
-          ns.singularity.purchaseAugmentation(faction, "NeuroFlux Governor")
+          ns.tprint("-------should install NeuroFlux------------")
+          // ns.singularity.purchaseAugmentation(faction, "NeuroFlux Governor")
         ) {
           ns.tprint(
             `[AUG BUY] Leveled NeuroFlux Governor via ${faction} for $${ns.format.number(price)}`,
@@ -167,7 +165,8 @@ export async function main(ns) {
       `[AUG INSTALL] Successfully purchased ${purchasedCount} augmentations. Installing and rebooting with startup.js...`,
     );
     await ns.sleep(2500);
-    ns.singularity.installAugmentations("startup.js");
+    ns.tprint("---------testing install---------------");
+    // ns.singularity.installAugmentations("startup.js");
   } else {
     ns.tprint(
       `[AUG INSTALL] No augmentations were purchased. Aborting install to prevent unnecessary reset.`,
